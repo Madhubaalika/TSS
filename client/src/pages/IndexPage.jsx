@@ -1,16 +1,32 @@
 /* eslint-disable react/jsx-key */
 import axios from "axios";
-import { useEffect, useState } from "react"
+import { UserContext } from "../UserContext";
+import { useEffect, useState,useContext } from "react"
 import { Link } from "react-router-dom";
 import { BsArrowRightShort } from "react-icons/bs";
 import { BiLike } from "react-icons/bi";
 
   export default function IndexPage() {
     const [events, setEvents] = useState([]);
-
+    const { user } = useContext(UserContext);
    //! Fetch events from the server ---------------------------------------------------------------
-    useEffect(() => {
+   useEffect(() => {
+    if (user) {
+      const userId = user._id; // Ensure userId is correctly populated
+      const endpoint = userId ? `/createEvent/${userId}` : "/createEvent";
       
+      console.log("Fetching events for user:", userId); // Log userId to confirm it exists
+      
+      axios
+        .get(endpoint)
+        .then((response) => {
+          setEvents(response.data);
+        })
+        .catch((error) => {
+          console.error("Error fetching events:", error);
+        });
+    } else {
+      console.log("User not logged in, fetching all events.");
       axios
         .get("/createEvent")
         .then((response) => {
@@ -19,8 +35,9 @@ import { BiLike } from "react-icons/bi";
         .catch((error) => {
           console.error("Error fetching events:", error);
         });
-    }, []);
-    
+    }
+  }, [user]);
+
   //! Like Functionality --------------------------------------------------------------
     const handleLike = (eventId) => {
       axios
@@ -64,10 +81,9 @@ import { BiLike } from "react-icons/bi";
               <div className='rounded-tl-[0.75rem] rounded-tr-[0.75rem] rounded-br-[0] rounded-bl-[0] object-fill aspect-16:9'>
               {event.image && (
                 <img
-                  src={`http://localhost:4000/api/${event.image}`}
+                  src={`http://localhost:4000/${event.image}`}
                   alt={event.title}
-                  width="300" 
-                  height="200" 
+                  style={{ width: '300px', height: '200px', objectFit: 'cover' }}
                   className="w-full h-full"
                 />
               )}
@@ -78,11 +94,6 @@ import { BiLike } from "react-icons/bi";
               
                 </div>
               </div>
-
-                
-
-                <img src="../src/assets/paduru.png" alt="" className='rounded-tl-[0.75rem] rounded-tr-[0.75rem] rounded-br-[0] rounded-bl-[0] object-fill aspect-16:9'/> 
-    {/* FIXME: This is a demo image after completing the create event function delete this */}
 
               <div className="m-2 grid gap-2">
                 <div className="flex justify-between items-center">

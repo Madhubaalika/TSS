@@ -121,7 +121,13 @@ export default function LoginPage() {
                 </Link>
               </div>
             </div>
-
+            <div className="mt-4">
+  <Link to={'/admin'}>
+    <button type="button" className="primary w-full bg-red-600 text-white py-2 rounded">
+      Login as Admin
+    </button>
+  </Link>
+</div>
             <Link to={'/'} className="">
               <button className="secondary">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">

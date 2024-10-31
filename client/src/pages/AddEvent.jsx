@@ -1,4 +1,4 @@
-import  { useContext, useState } from 'react';
+import  { useContext, useState,useEffect } from 'react';
 import axios from 'axios';
 import { UserContext } from '../UserContext';
 
@@ -13,33 +13,45 @@ export default function AddEvent() {
     organizedBy: "",
     eventDate: "",
     eventTime: "",
-    location: "",
+    booth: "",
+    category:"",
     ticketPrice: 0,
-    image: '',
+    image: null,
     likes: 0
   });
+  const [availableBooths, setAvailableBooths] = useState([]);
 
+  useEffect(() => {
+      // Fetch available booths from backend
+      axios.get('/api/booth/available-booths')
+          .then(response => setAvailableBooths(response.data))
+          .catch(error => console.error('Error fetching available booths:', error));
+  }, []);
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     setFormData((prevState) => ({ ...prevState, image: file }));
   };
 
   const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    if (files) {
-      setFormData((prevState) => ({ ...prevState, [name]: files[0] }));
-    } else {
-      setFormData((prevState) => ({ ...prevState, [name]: value }));
-    }
+    const { name, value } = e.target;
+    setFormData((prevState) => ({ ...prevState, [name]: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios
-      .post("/createEvent", formData)
+    // Create FormData object
+    const data = new FormData();
+    for (let key in formData) {
+      data.append(key, formData[key]);
+    }
+
+    axios.post("/createEvent", data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    })
       .then((response) => {
         console.log("Event posted successfully:", response.data);
-        
       })
       .catch((error) => {
         console.error("Error posting event:", error);
@@ -112,12 +124,29 @@ export default function AddEvent() {
           />
         </label>
         <label className='flex flex-col'>
-          Location:
+                Booth:
+                <select
+                    name="booth"
+                    className="rounded mt-2 pl-5 px-4 ring-sky-700 ring-2 h-8 border-none"
+                    value={formData.booth}
+                    onChange={handleChange}
+                    required
+                >
+                    <option value="">Select a booth</option>
+                    {availableBooths.map(booth => (
+                        <option key={booth} value={booth}>
+                            Booth {booth}
+                        </option>
+                    ))}
+                </select>
+            </label>
+            <label className='flex flex-col'>
+          Cateogory:
           <input
             type="text"
-            name="location"
+            name="category"
             className=' rounded mt-2 pl-5 px-4 ring-sky-700 ring-2 h-8 border-none'
-            value={formData.location}
+            value={formData.category}
             onChange={handleChange}
           />
         </label>
@@ -136,7 +165,6 @@ export default function AddEvent() {
           <input
             type="file"
             name="image"
-            
             className=' rounded mt-2 pl-5 px-4 py-10 ring-sky-700 ring-2 h-8 border-none'
             onChange={handleImageUpload}
           />

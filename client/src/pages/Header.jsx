@@ -101,7 +101,16 @@ export default function Header() {
               <div className='font-bold color-primary text-sm'>Create Event</div>
             </div>  
           </Link>
-
+          <Link to={'/boothmap'}> {/*TODO:Route create event page after creating it */}
+            <div className='hidden md:flex flex-col place-items-center py-1 px-2 rounded text-primary cursor-pointer hover:text-primarydark hover:bg-white hover:shadow-sm shadow-gray-200 hover:transition-shadow duration-1500'>
+              <button>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 stroke-3 py-1">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              </button>
+              <div className='font-bold color-primary text-sm'>Boothmap</div>
+            </div>  
+          </Link>
           <div className='hidden lg:flex gap-5 text-sm'>
           <Link to={'/wallet'}> {/*TODO:Route wallet page after creating it */}
             <div className='flex flex-col place-items-center py-1 px-3 rounded cursor-pointer hover:text-primarydark hover:bg-white hover:shadow-sm shadow-gray-200 hover:transition-shadow duration-1500'>
@@ -112,14 +121,30 @@ export default function Header() {
             </div >
             </Link>
 
-            <Link to={'/verification'}> {/*TODO:Route verification center page after creating it */}
+           <Link to={'/verification'}> {/*TODO:Route verification center page after creating it */}
             <div className='flex flex-col place-items-center py-1 px-3 rounded cursor-pointer hover:text-primarydark hover:bg-white hover:shadow-sm shadow-gray-200 hover:transition-shadow duration-1500'>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 py-1">
                 <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm11.378-3.917c-.89-.777-2.366-.777-3.255 0a.75.75 0 01-.988-1.129c1.454-1.272 3.776-1.272 5.23 0 1.513 1.324 1.513 3.518 0 4.842a3.75 3.75 0 01-.837.552c-.676.328-1.028.774-1.028 1.152v.75a.75.75 0 01-1.5 0v-.75c0-1.279 1.06-2.107 1.875-2.502.182-.088.351-.199.503-.331.83-.727.83-1.857 0-2.584zM12 18a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
               </svg>
               <div>Center</div>
             </div>
-            </Link>
+            </Link> 
+            <Link to={'/volunteer'}>
+  <div className='flex flex-col place-items-center py-1 px-3 rounded cursor-pointer hover:text-primarydark hover:bg-white hover:shadow-sm shadow-gray-200 hover:transition-shadow duration-1500'>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 py-1">
+      <path d="..." /> {/* Add a suitable SVG path */}
+    </svg>
+    <div>Volunteer</div>
+  </div>
+</Link>
+            <Link to={'/feedback-session'}> {/* TODO: Route feedback session page after creating it */}
+  <div className='flex flex-col place-items-center py-1 px-3 rounded cursor-pointer hover:text-primarydark hover:bg-white hover:shadow-sm shadow-gray-200 hover:transition-shadow duration-1500'>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 py-1">
+      <path fillRule="evenodd" d="M12 2.25a9.75 9.75 0 100 19.5 9.75 9.75 0 000-19.5zM12 17.25a.75.75 0 100-1.5.75.75 0 000 1.5zm1.086-3.064a.75.75 0 11-.868 1.284c-.544-.368-1.33-.47-2.017-.192-.687.277-1.236.884-1.39 1.575a.75.75 0 01-1.463-.37c.22-.973.947-1.89 1.922-2.282.975-.391 2.067-.207 2.816.337zm.506-2.858a2.252 2.252 0 11-4.504 0 2.252 2.252 0 014.504 0z" clipRule="evenodd" />
+    </svg>
+    <div>Feedback</div>
+  </div>
+</Link>
 
             <Link to={'/calendar'}> {/*TODO:Route calendar page after creating it */}
             <div className='flex flex-col place-items-center py-1 px-3 rounded cursor-pointer hover:text-primarydark hover:bg-white hover:shadow-sm shadow-gray-200 hover:transition-shadow duration-1500'>

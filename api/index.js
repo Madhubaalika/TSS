@@ -8,8 +8,9 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const multer = require("multer");
 const path = require("path");
-
+const Feedback=require("./models/Feedback");
 const Ticket = require("./models/Ticket");
+const Volunteer = require("./models/Volunteer");
 
 const app = express();
 
@@ -26,18 +27,20 @@ app.use(
 );
 
 mongoose.connect(process.env.MONGO_URL);
+app.use(cors({ origin: 'http://localhost:5173' }));  // replace with your frontend URL
 
 const storage = multer.diskStorage({
    destination: (req, file, cb) => {
       cb(null, "uploads/");
    },
    filename: (req, file, cb) => {
-      cb(null, file.originalname);
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + "-" + file.originalname);
    },
 });
 
 const upload = multer({ storage });
-
+app.use("/uploads", express.static("uploads"));
 app.get("/test", (req, res) => {
    res.json("test ok");
 });
@@ -111,7 +114,8 @@ const eventSchema = new mongoose.Schema({
    organizedBy: String,
    eventDate: Date,
    eventTime: String,
-   location: String,
+   booth: Number,
+   category: String,
    Participants: Number,
    Count: Number,
    Income: Number,
@@ -136,14 +140,45 @@ app.post("/createEvent", upload.single("image"), async (req, res) => {
    }
 });
 
-app.get("/createEvent", async (req, res) => {
+app.get("/createEvent/:userId?", async (req, res) => {
    try {
-      const events = await Event.find();
-      res.status(200).json(events);
+       const { userId } = req.params;
+       if (!userId) {
+         const allFutureEvents = await Event.find({
+             eventDate: { $gt: new Date() }  // Only future events
+         });
+         return res.json(allFutureEvents);
+     }
+       // Find categories where the user rated an event above a threshold (e.g., 3)
+       const feedbackEntries = await Feedback.find({
+         userId: userId,
+         rating: { $gt: 3 }
+       }); // Only select eventId field
+     // Extract eventIds into an array
+     const eventIds = feedbackEntries.map(entry => entry.eventId);
+
+     // Step 2: Fetch categories from Event using the obtained eventIds
+     const events = await Event.find({
+         _id: { $in: eventIds } // Find events with these eventIds
+     }).select('category'); // Only select category field
+
+     // Extract categories into an array
+     const categories = events.map(event => event.category);
+       // Fetch all events in the preferred categories
+       const preferredEvents = await Event.find({ category: { $in: categories },
+         eventDate: { $gt: new Date() } });
+
+       // Fetch all other events not in the preferred categories
+       const otherEvents = await Event.find({ category: { $nin: categories },
+         eventDate: { $gt: new Date() } });
+       // Combine preferred events (displayed first) and other events
+       const event = [...preferredEvents, ...otherEvents];
+       res.json(event);
    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch events from MongoDB" });
+       res.status(500).json({ message: "Error fetching events", error });
    }
 });
+
 
 app.get("/event/:id", async (req, res) => {
    const { id } = req.params;
@@ -206,6 +241,43 @@ app.get("/event/:id/ordersummary/paymentsummary", async (req, res) => {
       res.status(500).json({ error: "Failed to fetch event from MongoDB" });
    }
 });
+app.get('/api/boothAvailability', async (req, res) => {
+   try {
+      const today = new Date();
+    
+      // Retrieve only future events, selecting booth and eventName fields
+      const futureEvents = await Event.find(
+        { eventDate: { $gte: today } },  // Filters events with dates in the future
+        'booth title'
+      );
+     const boothData = futureEvents.map(event => ({
+       booth: event.booth,
+       title: event.title
+     }));
+     res.json(boothData);
+   } catch (error) {
+     console.error('Error fetching booth data:', error);
+     res.status(500).send('Error retrieving booth data');
+   }
+ });
+app.get('/api/booth/available-booths', async (req, res) => {
+   try {
+       // Find all booked booth numbers (those already associated with an event)
+       const today = new Date();
+       const bookedBooths = await Event.find( { eventDate: { $gte: today } }, 'booth').distinct('booth'); // Get unique booked booth numbers
+
+       // Define all booth numbers from 1 to 30
+       const totalBooths = Array.from({ length: 30 }, (_, i) => i + 1);
+
+       // Filter out booked booths to get available ones
+       const availableBooths = totalBooths.filter(booth => !bookedBooths.includes(booth));
+
+       res.json(availableBooths); // Send the available booth numbers as response
+   } catch (error) {
+       console.error('Error fetching available booths:', error);
+       res.status(500).json({ message: 'Server error' });
+   }
+});
 
 app.post("/tickets", async (req, res) => {
    try {
@@ -252,7 +324,197 @@ app.delete("/tickets/:id", async (req, res) => {
       res.status(500).json({ error: "Failed to delete ticket" });
    }
 });
+// Route to fetch completed events for the user
+app.get('/api/completed-events/:userId',  async (req, res) => {
+   const userId = req.params.userId; // Get the user ID from the authenticated user
+   const today = new Date();
 
+   try {
+     
+       // Query to find tickets that the user has purchased for past events
+       const completedEvents = await Ticket.find({
+           userid: userId, // Check for the user's ID in the ticket collection
+           'ticketDetails.eventdate': { $lt: today }, // Ensure the event date is before today
+       }).lean();
+       const eventIds = completedEvents.map(ticket => ticket.eventid);
+
+// Find events where feedback does not exist for the same event and user
+const feedbacks = await Feedback.find({
+    userId: userId,
+    eventId: { $in: eventIds }
+});
+
+const feedbackEventIds = feedbacks.map(feedback => feedback.eventId.toString());
+
+// Filter out events that already have feedback
+const eventsWithoutFeedback = completedEvents.filter(ticket => !feedbackEventIds.includes(ticket.eventid.toString()));
+      
+       if (eventsWithoutFeedback.length === 0) {
+         return res.status(404).json({ message: 'No completed events found' });
+     }
+       res.json(eventsWithoutFeedback); // Send back the completed events
+   } catch (err) {
+       res.status(500).json({ message: 'Error fetching completed events' });
+   }
+});
+app.post('/api/submit-feedback/:userId', async (req, res) => {
+   const { eventId, rating, comments } = req.body;
+   const userId = req.params.userId;
+ 
+
+   try {
+       // Add feedback to the database
+       const feedback = new Feedback({
+           eventId: eventId,
+           userId: userId,
+           rating,
+           comments
+       });
+       await feedback.save();
+
+       res.status(200).json({ message: 'Feedback submitted successfully' });
+   } catch (err) {
+      console.log(err.message);
+       res.status(500).json({ message: 'Error submitting feedback' });
+       
+   }
+});
+
+app.post('/api/volunteers-submit/:userId', async (req, res) => {
+   const volunteer = req.body;
+   const userId = req.params.userId;
+ 
+
+   try {
+       // Add feedback to the database
+       const volunteers = new Volunteer({
+           userid: userId,
+           name:volunteer.name,
+           email:volunteer.email,
+           phone:volunteer.phone,
+           skills:volunteer.skills
+       });
+       await volunteers.save();
+
+       res.status(200).json({ message: 'Form Submitted successfully' });
+   } catch (err) {
+      console.log(err.message);
+       res.status(500).json({ message: 'Error submitting feedback' });
+       
+   }
+});
+app.get('/api/volunteer/is-registered/:userId', async (req, res) => {
+   try {
+       const userId = req.params.userId;
+       const isRegistered = await Volunteer.findOne({ userid: userId });
+       if (isRegistered) {
+           return res.json({ registered: true });
+       }
+       res.json({ registered: false });
+   } catch (error) {
+       console.error('Error checking volunteer registration:', error);
+       res.status(500).json({ message: 'Server error' });
+   }
+});
+app.get('/api/admin/events', async (req, res) => {
+   try {
+     const events = await Event.find(); // Fetch all events from the database
+     res.json(events);
+   } catch (error) {
+     res.status(500).json({ message: error.message });
+   }
+ });
+ app.put('/api/admin/events/:id', async (req, res) => {
+   try {
+     const event = await Event.findByIdAndUpdate(req.params.id, req.body, { new: true });
+     res.json(event);
+   } catch (error) {
+     res.status(500).json({ message: error.message });
+   }
+ });
+ app.delete('/api/admin/events/:eventId', async (req, res) => {
+   const { eventId } = req.params;
+ 
+   try {
+     const result = await Event.findByIdAndDelete(eventId);
+     
+     // Check if the event was found and deleted
+     if (!result) {
+       return res.status(404).json({ message: 'Event not found' });
+     }
+ 
+     res.status(200).json({ message: 'Event deleted successfully' });
+   } catch (error) {
+     console.error(error);
+     res.status(500).json({ message: 'Server error' });
+   }
+ });
+ app.get('/api/feedback/all-feedback', async (req, res) => {
+   try {
+       const feedbacks = await Feedback.find()
+           .populate('eventId', 'title') // Populate event details (assuming 'name' field in Event)
+           .populate('userId', 'name'); // Populate user details (assuming 'username' field in User)
+       
+       res.status(200).json(feedbacks);
+   } catch (error) {
+       res.status(500).json({ error: 'Failed to fetch feedback.' });
+   }
+});
+app.get('/api/volunteers/all-volunteers', async (req, res) => {
+   try {
+       const volunteers = await Volunteer.find();
+       res.status(200).json(volunteers);
+   } catch (error) {
+       res.status(500).json({ error: 'Failed to fetch volunteers' });
+   }
+});
+
+app.post('/api/volunteers/pay-volunteer/:id', async (req, res) => {
+   try {
+       const volunteerId = req.params.id;
+
+       res.status(200).json({ message: `Payment successful for volunteer ID: ${volunteerId}` });
+   } catch (error) {
+       res.status(500).json({ error: 'Failed to process payment' });
+   }
+});
+app.post('/volunteer/:id/payment', async (req, res) => {
+   const { id } = req.params;
+   const { paymentDetails } = req.body;
+   try {
+     const volunteer = await Volunteer.findById(id);
+     if (!volunteer) {
+       return res.status(404).json({ message: 'Volunteer not found' });
+     }
+ 
+     // Add payment to paymentHistory
+     volunteer.paymentHistory.push({
+       amount: paymentDetails.amount,
+       date: new Date()
+     });
+     await volunteer.save();
+     res.status(200).json({ message: 'Payment recorded successfully' });
+   } catch (error) {
+      console.log(error);
+     res.status(500).json({ message: 'Error processing payment', error });
+   }
+ });
+ app.get('/volunteer/:id', async (req, res) => {
+   const { id } = req.params;
+ 
+   try {
+     const volunteer = await Volunteer.findById(id); // Find the volunteer by ID in the database
+ 
+     if (!volunteer) {
+       return res.status(404).json({ message: 'Volunteer not found' });
+     }
+ 
+     res.json(volunteer); // Send the volunteer data as JSON response
+   } catch (error) {
+     console.error('Error fetching volunteer:', error);
+     res.status(500).json({ message: 'Server error' });
+   }
+ });
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
    console.log(`Server is running on port ${PORT}`);

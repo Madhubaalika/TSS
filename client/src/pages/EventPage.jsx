@@ -47,13 +47,9 @@ if (!event) return '';
     <div className="flex flex-col mx-5 xl:mx-32 md:mx-10 mt-5 flex-grow">
      <div >
         {event.image &&(
-          <img src={`${event.image}`} alt="" height="500px" width="1440px" className='rounded object-fill aspect-16:9'/>
+          <img src={`http://localhost:4000/${event.image}`} alt="" style={{ width: '1440px', height: '500px', objectFit: 'cover' }} className='rounded object-fill aspect-16:9'/>
         )}
       </div>
-
-      <img src="../src/assets/paduru.png" alt="" className='rounded object-fill aspect-16:9'/> 
-      {/* FIXME: This is a demo image after completing the create event function delete this */}
-
       <div className="flex justify-between mt-8 mx-2">
           <h1 className="text-3xl md:text-5xl font-extrabold">{event.title.toUpperCase()}</h1>
           <Link to={'/event/'+event._id+ '/ordersummary'}>
@@ -68,6 +64,10 @@ if (!event) return '';
       </div>
       <div className="mx-2 mt-5 text-md md:text-xl font-bold text-primarydark">
         Organized By {event.organizedBy}
+        
+      </div>
+      <div className="mx-2 mt-5 text-md md:text-xl font-bold text-primarydark">
+        Category {event.category}
         
       </div>
       <div className="mx-2 mt-5">
@@ -89,9 +89,9 @@ if (!event) return '';
             <MdLocationPin className="w-auto h-5 text-primarydark "/>
             <div className="flex flex-col gap-1">
               
-              <h1 className="text-md md:text-lg font-extrabold">Location</h1>
+              <h1 className="text-md md:text-lg font-extrabold">Booth</h1>
               <div className="text-sm md:text-lg">
-                {event.location}
+                {event.booth}
               </div>
             </div>
             
